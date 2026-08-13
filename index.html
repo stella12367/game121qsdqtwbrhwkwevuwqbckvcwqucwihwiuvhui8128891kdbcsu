@@ -48,134 +48,77 @@
             player = { 
                 name: chosenClass, 
                 hp: classStats[chosenClass].hp, 
-                maxHp: classStats[chosenClass].hp, 
-                attack: classStats[chosenClass].attack, 
-                special: classStats[chosenClass].special, 
-                heal: classStats[chosenClass].heal,
-                healsLeft: 3 // Player can only heal 3 times
+                maxHp: classStats[chosenClass].hp,
+                heals: 3 
             };
-            
-            var classes = ['wizard', 'bowshooter', 'swordfighter'];
-            var randomClass = classes[Math.floor(Math.random() * classes.length)];
+
+            var availableClasses = Object.keys(classStats).filter(function(c) {
+                return c !== chosenClass;
+            });
+            var randomEnemyClass = availableClasses[Math.floor(Math.random() * availableClasses.length)];
+
             enemy = { 
-                name: 'evil ' + randomClass, 
-                hp: classStats[randomClass].hp, 
-                maxHp: classStats[randomClass].hp, 
-                attack: classStats[randomClass].attack, 
-                special: classStats[randomClass].special, 
-                heal: classStats[randomClass].heal,
-                healsLeft: 3 // Enemy can only heal 3 times
+                name: randomEnemyClass, 
+                hp: classStats[randomEnemyClass].hp, 
+                maxHp: classStats[randomEnemyClass].hp,
+                heals: 3 
             };
 
             isBattleOver = false;
-            document.getElementById('log').innerHTML = '<p>battle started against ' + enemy.name + '</p>';
-            document.getElementById('action-buttons').style.display = 'block';
-            document.getElementById('restart-btn').style.display = 'none';
-            document.getElementById('heal-btn').disabled = false;
-            
-            updateUi();
-
             document.getElementById('selection-screen').style.display = 'none';
             document.getElementById('battle-screen').style.display = 'block';
+            updateUI();
+            logMessage('Battle started against ' + enemy.name + '!');
         }
 
-        function updateUi() {
+        function updateUI() {
             document.getElementById('player-name').innerText = player.name;
-            document.getElementById('player-hp').innerText = player.hp + '/' + player.maxHp;
-            document.getElementById('player-heals-count').innerText = player.healsLeft;
-
+            document.getElementById('player-hp').innerText = player.hp;
+            document.getElementById('player-heals-count').innerText = player.heals;
             document.getElementById('enemy-name').innerText = enemy.name;
-            document.getElementById('enemy-hp').innerText = enemy.hp + '/' + enemy.maxHp;
-            document.getElementById('enemy-heals-count').innerText = enemy.healsLeft;
-
-            // Disable player heal button permanently if out of heals
-            if (player.healsLeft <= 0) {
-                document.getElementById('heal-btn').disabled = true;
-            }
+            document.getElementById('enemy-hp').innerText = enemy.hp;
+            document.getElementById('enemy-heals-count').innerText = enemy.heals;
         }
 
         function logMessage(msg) {
-            document.getElementById('log').innerHTML += '<p>' + msg + '</p>';
+            var logDiv = document.getElementById('log');
+            logDiv.innerHTML += '<p>' + msg + '</p>';
         }
 
-        function playerAction(type) {
+        function playerAction(action) {
             if (isBattleOver) return;
-
-            if (type === 'attack') {
-                enemy.hp = Math.max(0, enemy.hp - player.attack);
-                logMessage('you attacked for ' + player.attack + ' damage.');
-            } else if (type === 'special') {
-                enemy.hp = Math.max(0, enemy.hp - player.special);
-                logMessage('you used special for ' + player.special + ' damage.');
-            } else if (type === 'heal') {
-                if (player.healsLeft > 0) {
-                    player.hp = Math.min(player.maxHp, player.hp + player.heal);
-                    player.healsLeft--;
-                    logMessage('you healed for ' + player.heal + ' hp.');
-                } else {
-                    logMessage('you have no heals left!');
-                    return; // Don't trigger enemy turn if action failed
-                }
+            if (action === 'attack') {
+                enemy.hp -= classStats[player.name].attack;
+                logMessage(player.name + ' attacks for ' + classStats[player.name].attack + ' damage.');
             }
-
-            updateUi();
-            if (checkBattleStatus()) return;
-
-            enemyTurn();
+            checkWin();
+            if (!isBattleOver) enemyTurn();
+            updateUI();
         }
 
         function enemyTurn() {
-            if (isBattleOver) return;
-
-            var choices = ['attack', 'special', 'heal'];
-            var choice = choices[Math.floor(Math.random() * choices.length)];
-
-            // If enemy tries to heal but has none left, force it to attack instead
-            if (choice === 'heal' && enemy.healsLeft <= 0) {
-                choice = 'attack';
-            }
-
-            if (choice === 'attack') {
-                player.hp = Math.max(0, player.hp - enemy.attack);
-                logMessage(enemy.name + ' attacked for ' + enemy.attack + ' damage.');
-            } else if (choice === 'special') {
-                player.hp = Math.max(0, player.hp - enemy.special);
-                logMessage(enemy.name + ' used special for ' + enemy.special + ' damage.');
-            } else if (choice === 'heal') {
-                enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.heal);
-                enemy.healsLeft--;
-                logMessage(enemy.name + ' healed for ' + enemy.heal + ' hp.');
-            }
-
-            updateUi();
-            checkBattleStatus();
+            player.hp -= classStats[enemy.name].attack;
+            logMessage(enemy.name + ' attacks back for ' + classStats[enemy.name].attack + ' damage.');
+            checkWin();
         }
 
-        function checkBattleStatus() {
+        function checkWin() {
             if (enemy.hp <= 0) {
-                logMessage('victory! you won.');
-                endBattle();
-                return true;
+                enemy.hp = 0;
+                logMessage('You win!');
+                isBattleOver = true;
+            } else if (player.hp <= 0) {
+                player.hp = 0;
+                logMessage('You lose!');
+                isBattleOver = true;
             }
-            if (player.hp <= 0) {
-                logMessage('defeat! you lost.');
-                endBattle();
-                return true;
-            }
-            return false;
-        }
-
-        function endBattle() {
-            isBattleOver = true;
-            document.getElementById('action-buttons').style.display = 'none';
-            document.getElementById('restart-btn').style.display = 'inline';
         }
 
         function resetGame() {
+            document.getElementById('log').innerHTML = '';
             document.getElementById('battle-screen').style.display = 'none';
             document.getElementById('selection-screen').style.display = 'block';
         }
     </script>
 </body>
 </html>
-
