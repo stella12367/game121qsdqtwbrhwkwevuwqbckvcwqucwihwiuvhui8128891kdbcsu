@@ -52,6 +52,7 @@
                 heals: 3 
             };
 
+            // Filter de gekozen klasse van de speler weg voor de computer
             var availableClasses = Object.keys(classStats).filter(function(c) {
                 return c !== chosenClass;
             });
@@ -67,8 +68,11 @@
             isBattleOver = false;
             document.getElementById('selection-screen').style.display = 'none';
             document.getElementById('battle-screen').style.display = 'block';
+            document.getElementById('restart-btn').style.display = 'none';
+            document.getElementById('action-buttons').style.display = 'block';
+            
             updateUI();
-            logMessage('Battle started against ' + enemy.name + '!');
+            logMessage('Battle started! You (' + player.name + ') vs Computer (' + enemy.name + ')');
         }
 
         function updateUI() {
@@ -87,31 +91,72 @@
 
         function playerAction(action) {
             if (isBattleOver) return;
+
+            // Speler acties
             if (action === 'attack') {
-                enemy.hp -= classStats[player.name].attack;
-                logMessage(player.name + ' attacks for ' + classStats[player.name].attack + ' damage.');
+                var damage = classStats[player.name].attack;
+                enemy.hp -= damage;
+                logMessage('<b>' + player.name + '</b> attacks for ' + damage + ' damage.');
+            } 
+            else if (action === 'special') {
+                var damage = classStats[player.name].special;
+                enemy.hp -= damage;
+                logMessage('<b>' + player.name + '</b> uses SPECIAL for ' + damage + ' damage!');
+            } 
+            else if (action === 'heal') {
+                if (player.heals > 0) {
+                    var healAmount = classStats[player.name].heal;
+                    player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                    player.heals--;
+                    logMessage('<b>' + player.name + '</b> heals for ' + healAmount + ' HP.');
+                } else {
+                    logMessage('No heals left!');
+                    return; // Stop actie als genezen niet kan
+                }
             }
+
             checkWin();
-            if (!isBattleOver) enemyTurn();
+            
+            // Als de vijand nog leeft, slaat deze direct terug
+            if (!isBattleOver) {
+                enemyTurn();
+            }
+            
             updateUI();
         }
 
         function enemyTurn() {
-            player.hp -= classStats[enemy.name].attack;
-            logMessage(enemy.name + ' attacks back for ' + classStats[enemy.name].attack + ' damage.');
+            // De computer kiest willekeurig tussen een normale aanval of genezen (als hp laag is)
+            if (enemy.hp < (enemy.maxHp * 0.4) && enemy.heals > 0 && Math.random() > 0.5) {
+                var healAmount = classStats[enemy.name].heal;
+                enemy.hp = Math.min(enemy.maxHp, enemy.hp + healAmount);
+                enemy.heals--;
+                logMessage('<i>' + enemy.name + '</i> heals for ' + healAmount + ' HP.');
+            } else {
+                var damage = classStats[enemy.name].attack;
+                player.hp -= damage;
+                logMessage('<i>' + enemy.name + '</i> attacks back for ' + damage + ' damage.');
+            }
+            
             checkWin();
         }
 
         function checkWin() {
             if (enemy.hp <= 0) {
                 enemy.hp = 0;
-                logMessage('You win!');
-                isBattleOver = true;
+                logMessage('<h3> You win</h3>');
+                endGame();
             } else if (player.hp <= 0) {
                 player.hp = 0;
-                logMessage('You lose!');
-                isBattleOver = true;
+                logMessage('<h3> You lose</h3>');
+                endGame();
             }
+        }
+
+        function endGame() {
+            isBattleOver = true;
+            document.getElementById('action-buttons').style.display = 'none';
+            document.getElementById('restart-btn').style.display = 'inline-block';
         }
 
         function resetGame() {
