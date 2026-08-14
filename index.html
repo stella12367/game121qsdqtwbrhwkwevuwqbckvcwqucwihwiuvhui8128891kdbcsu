@@ -12,6 +12,7 @@
             <button onclick="startGame('wizard')">wizard</button>
             <button onclick="startGame('bowshooter')">bowshooter</button>
             <button onclick="startGame('swordfighter')">swordfighter</button>
+            <button onclick="startGame('slime')">slime</button>
         </div>
 
         <!-- Battle Screen -->
@@ -37,133 +38,148 @@
 
     <script>
         var classStats = {
-            wizard: { hp: 80, attack: 12, special: 25, heal: 15 },
-            bowshooter: { hp: 100, attack: 15, special: 22, heal: 10 },
-            swordfighter: { hp: 120, attack: 18, special: 20, heal: 8 }
+            wizard: { hp: 83, attack: 12, special: 25, heal: 15 },
+            bowshooter: { hp: 102, attack: 15, special: 22, heal: 10 },
+            swordfighter: { hp: 115, attack: 18, special: 20, heal: 8 },
+            slime: { hp: 20, attack: 20, special: 100, heal: 2 }
         };
 
         var player, enemy, isBattleOver;
 
+        // Start het spel en kies een UNIEKE vijand
         function startGame(chosenClass) {
+            // Pak alle klassen en filter de klasse van de speler eruit
+            var classes = Object.keys(classStats);
+            var availableEnemyClasses = classes.filter(function(className) {
+                return className !== chosenClass;
+            });
+
+            // Kies een willekeurige klasse uit de overgebleven opties
+            var randomClass = availableEnemyClasses[Math.floor(Math.random() * availableEnemyClasses.length)];
+
+            // Speler data laden
             player = { 
                 name: chosenClass, 
-                hp: classStats[chosenClass].hp, 
+                hp: classStats[chosenClass].hp,
                 maxHp: classStats[chosenClass].hp,
-                heals: 3 
+                stats: classStats[chosenClass],
+                healsLeft: 3
             };
 
-            // Filter de gekozen klasse van de speler weg voor de computer
-            var availableClasses = Object.keys(classStats).filter(function(c) {
-                return c !== chosenClass;
-            });
-            var randomEnemyClass = availableClasses[Math.floor(Math.random() * availableClasses.length)];
-
-            enemy = { 
-                name: randomEnemyClass, 
-                hp: classStats[randomEnemyClass].hp, 
-                maxHp: classStats[randomEnemyClass].hp,
-                heals: 3 
+            // Vijand data laden
+            enemy = {
+                name: randomClass,
+                hp: classStats[randomClass].hp,
+                maxHp: classStats[randomClass].hp,
+                stats: classStats[randomClass],
+                healsLeft: 3
             };
 
             isBattleOver = false;
+
+            // Schermen wisselen
             document.getElementById('selection-screen').style.display = 'none';
             document.getElementById('battle-screen').style.display = 'block';
-            document.getElementById('restart-btn').style.display = 'none';
             document.getElementById('action-buttons').style.display = 'block';
-            
+            document.getElementById('restart-btn').style.display = 'none';
+            document.getElementById('log').innerHTML = 'The battle begins! You face a ' + enemy.name + '.';
+
             updateUI();
-            logMessage('Battle started! You (' + player.name + ') vs Computer (' + enemy.name + ')');
         }
 
+        // Update de HP en teksten op het scherm
         function updateUI() {
             document.getElementById('player-name').innerText = player.name;
             document.getElementById('player-hp').innerText = player.hp;
-            document.getElementById('player-heals-count').innerText = player.heals;
+            document.getElementById('player-heals-count').innerText = player.healsLeft;
+
             document.getElementById('enemy-name').innerText = enemy.name;
             document.getElementById('enemy-hp').innerText = enemy.hp;
-            document.getElementById('enemy-heals-count').innerText = enemy.heals;
+            document.getElementById('enemy-heals-count').innerText = enemy.healsLeft;
         }
 
-        function logMessage(msg) {
-            var logDiv = document.getElementById('log');
-            logDiv.innerHTML += '<p>' + msg + '</p>';
-        }
-
+        // Logica voor de actie van de speler
         function playerAction(action) {
             if (isBattleOver) return;
 
-            // Speler acties
+            var logDiv = document.getElementById('log');
+            logDiv.innerHTML = ''; // Log leegmaken voor nieuwe beurt
+
             if (action === 'attack') {
-                var damage = classStats[player.name].attack;
-                enemy.hp -= damage;
-                logMessage('<b>' + player.name + '</b> attacks for ' + damage + ' damage.');
-            } 
-            else if (action === 'special') {
-                var damage = classStats[player.name].special;
-                enemy.hp -= damage;
-                logMessage('<b>' + player.name + '</b> uses SPECIAL for ' + damage + ' damage!');
-            } 
-            else if (action === 'heal') {
-                if (player.heals > 0) {
-                    var healAmount = classStats[player.name].heal;
-                    player.hp = Math.min(player.maxHp, player.hp + healAmount);
-                    player.heals--;
-                    logMessage('<b>' + player.name + '</b> heals for ' + healAmount + ' HP.');
+                enemy.hp -= player.stats.attack;
+                logDiv.innerHTML += 'You attacked ' + enemy.name + ' for ' + player.stats.attack + ' damage.<br>';
+            } else if (action === 'special') {
+                enemy.hp -= player.stats.special;
+                logDiv.innerHTML += 'You used a special attack on ' + enemy.name + ' for ' + player.stats.special + ' damage.<br>';
+            } else if (action === 'heal') {
+                if (player.healsLeft > 0) {
+                    player.hp += player.stats.heal;
+                    if (player.hp > player.maxHp) player.hp = player.maxHp; // Niet over max HP healen
+                    player.healsLeft--;
+                    logDiv.innerHTML += 'You healed yourself for ' + player.stats.heal + ' HP.<br>';
                 } else {
-                    logMessage('No heals left!');
-                    return; // Stop actie als genezen niet kan
+                    logDiv.innerHTML += 'No heals left! Turn wasted.<br>';
                 }
             }
 
-            checkWin();
-            
-            // Als de vijand nog leeft, slaat deze direct terug
-            if (!isBattleOver) {
-                enemyTurn();
+            if (enemy.hp <= 0) {
+                enemy.hp = 0;
+                logDiv.innerHTML += '<b>Victory! You defeated the ' + enemy.name + '!</b><br>';
+                endGame();
+                return;
             }
+
+            // Als de vijand nog leeft, slaat deze automatisch terug
+            enemyAction();
+        }
+
+        // AI voor de tegenstander
+        function enemyAction() {
+            var logDiv = document.getElementById('log');
+            var actions = ['attack', 'special'];
             
+            if (enemy.healsLeft > 0 && enemy.hp < enemy.maxHp) {
+                actions.push('heal');
+            }
+
+            var randomAction = actions[Math.floor(Math.random() * actions.length)];
+
+            if (randomAction === 'attack') {
+                player.hp -= enemy.stats.attack;
+                logDiv.innerHTML += enemy.name + ' attacked you for ' + enemy.stats.attack + ' damage.<br>';
+            } else if (randomAction === 'special') {
+                player.hp -= enemy.stats.special;
+                logDiv.innerHTML += enemy.name + ' used special attack for ' + enemy.stats.special + ' damage.<br>';
+            } else if (randomAction === 'heal') {
+                enemy.hp += enemy.stats.heal;
+                if (enemy.hp > enemy.maxHp) enemy.hp = enemy.maxHp;
+                enemy.healsLeft--;
+                logDiv.innerHTML += enemy.name + ' healed themselves for ' + enemy.stats.heal + ' HP.<br>';
+            }
+
+            if (player.hp <= 0) {
+                player.hp = 0;
+                logDiv.innerHTML += '<b>Defeat! You were defeated by ' + enemy.name + '.</b><br>';
+                endGame();
+            }
+
             updateUI();
         }
 
-        function enemyTurn() {
-            // De computer kiest willekeurig tussen een normale aanval of genezen (als hp laag is)
-            if (enemy.hp < (enemy.maxHp * 0.4) && enemy.heals > 0 && Math.random() > 0.5) {
-                var healAmount = classStats[enemy.name].heal;
-                enemy.hp = Math.min(enemy.maxHp, enemy.hp + healAmount);
-                enemy.heals--;
-                logMessage('<i>' + enemy.name + '</i> heals for ' + healAmount + ' HP.');
-            } else {
-                var damage = classStats[enemy.name].attack;
-                player.hp -= damage;
-                logMessage('<i>' + enemy.name + '</i> attacks back for ' + damage + ' damage.');
-            }
-            
-            checkWin();
-        }
-
-        function checkWin() {
-            if (enemy.hp <= 0) {
-                enemy.hp = 0;
-                logMessage('<h3> You win</h3>');
-                endGame();
-            } else if (player.hp <= 0) {
-                player.hp = 0;
-                logMessage('<h3> You lose</h3>');
-                endGame();
-            }
-        }
-
+        // Beëindig het spel
         function endGame() {
             isBattleOver = true;
+            updateUI();
             document.getElementById('action-buttons').style.display = 'none';
             document.getElementById('restart-btn').style.display = 'inline-block';
         }
 
+        // Reset naar het personage-selectiescherm
         function resetGame() {
-            document.getElementById('log').innerHTML = '';
-            document.getElementById('battle-screen').style.display = 'none';
             document.getElementById('selection-screen').style.display = 'block';
+            document.getElementById('battle-screen').style.display = 'none';
         }
     </script>
 </body>
 </html>
+
