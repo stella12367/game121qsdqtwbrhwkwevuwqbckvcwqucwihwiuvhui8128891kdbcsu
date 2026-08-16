@@ -155,7 +155,7 @@ function enemyAction() {
     if (randomAction === 'attack' || randomAction === 'special') {
         var baseDamage = randomAction === 'attack' ? enemy.stats.attack : enemy.stats.special;
         var damage = baseDamage;
-        var isCrit = Math.random() < 0.20; // 20% kans op een critical hit
+        var isCrit = Math.random() < 0.20; // 100% kans op een critical hit
 
         if (isCrit) {
             damage = baseDamage * 2;
