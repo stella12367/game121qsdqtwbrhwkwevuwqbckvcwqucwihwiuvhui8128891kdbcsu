@@ -4,183 +4,204 @@
     <title>Hello, World?</title>
 </head>
 <body>
-    <center>
-        <!-- Character Selection Screen -->
-        <div id="selection-screen">
-            <h1>choose your character</h1>
-            <p>the slime is the worst</p>
-            <br>
-            <button onclick="startGame('wizard')">wizard</button>
-            <button onclick="startGame('bowshooter')">bowshooter</button>
-            <button onclick="startGame('swordfighter')">swordfighter</button>
-            <button onclick="startGame('slime')">slime</button>
+<center>
+    <!-- Character Selection Screen -->
+    <div id="selection-screen">
+        <h1>choose your character</h1>
+        <p>the slime is the worst</p>
+        <br>
+        <button onclick="startGame('wizard')">wizard</button>
+        <button onclick="startGame('bowshooter')">bowshooter</button>
+        <button onclick="startGame('swordfighter')">swordfighter</button>
+        <button onclick="startGame('slime')">slime</button>
+    </div>
+
+    <!-- Battle Screen -->
+    <div id="battle-screen" style="display: none;">
+        <h1>battle arena</h1>
+        <br>
+        <p><b>player:</b> <span id="player-name"></span> (hp: <span id="player-hp"></span>) [heals left: <span id="player-heals-count"></span>]</p>
+        <p><b>enemy:</b> <span id="enemy-name"></span> (hp: <span id="enemy-hp"></span>) [heals left: <span id="enemy-heals-count"></span>]</p>
+        <br>
+        <hr>
+        <div id="log" style="width: 300px; text-align: left;"></div>
+        <hr>
+        <br>
+        <div id="action-buttons">
+            <button onclick="playerAction('attack')">attack</button>
+            <button onclick="playerAction('special')">special</button>
+            <button id="heal-btn" onclick="playerAction('heal')">heal</button>
         </div>
+        <br>
+        <button id="restart-btn" style="display: none;" onclick="resetGame()">play again</button>
+    </div>
+</center>
 
-        <!-- Battle Screen -->
-        <div id="battle-screen" style="display: none;">
-            <h1>battle arena</h1>
-            <br>
-            <p><b>player:</b> <span id="player-name"></span> (hp: <span id="player-hp"></span>) [heals left: <span id="player-heals-count"></span>]</p>
-            <p><b>enemy:</b> <span id="enemy-name"></span> (hp: <span id="enemy-hp"></span>) [heals left: <span id="enemy-heals-count"></span>]</p>
-            <br>
-            <hr>
-            <div id="log" style="width: 300px; text-align: left;"></div>
-            <hr>
-            <br>
-            <div id="action-buttons">
-                <button onclick="playerAction('attack')">attack</button>
-                <button onclick="playerAction('special')">special</button>
-                <button id="heal-btn" onclick="playerAction('heal')">heal</button>
-            </div>
-            <br>
-            <button id="restart-btn" style="display: none;" onclick="resetGame()">play again</button>
-        </div>
-    </center>
+<script>
+var classStats = {
+    wizard: { hp: 83, attack: 12, special: 25, heal: 15 },
+    bowshooter: { hp: 102, attack: 15, special: 22, heal: 10 },
+    swordfighter: { hp: 115, attack: 18, special: 20, heal: 8 },
+    slime: { hp: 20, attack: 20, special: 100, heal: 2 }
+};
 
-    <script>
-        var classStats = {
-            wizard: { hp: 83, attack: 12, special: 25, heal: 15 },
-            bowshooter: { hp: 102, attack: 15, special: 22, heal: 10 },
-            swordfighter: { hp: 115, attack: 18, special: 20, heal: 8 },
-            slime: { hp: 20, attack: 20, special: 100, heal: 2 }
-        };
+var player, enemy, isBattleOver;
 
-        var player, enemy, isBattleOver;
+// Start het spel en kies een UNIEKE vijand
+function startGame(chosenClass) {
+    var classes = Object.keys(classStats);
+    var availableEnemyClasses = classes.filter(function(className) {
+        return className !== chosenClass;
+    });
+    
+    var randomClass = availableEnemyClasses[Math.floor(Math.random() * availableEnemyClasses.length)];
 
-        // Start het spel en kies een UNIEKE vijand
-        function startGame(chosenClass) {
-            // Pak alle klassen en filter de klasse van de speler eruit
-            var classes = Object.keys(classStats);
-            var availableEnemyClasses = classes.filter(function(className) {
-                return className !== chosenClass;
-            });
+    player = {
+        name: chosenClass,
+        hp: classStats[chosenClass].hp,
+        maxHp: classStats[chosenClass].hp,
+        stats: classStats[chosenClass],
+        healsLeft: 3
+    };
 
-            // Kies een willekeurige klasse uit de overgebleven opties
-            var randomClass = availableEnemyClasses[Math.floor(Math.random() * availableEnemyClasses.length)];
+    enemy = {
+        name: randomClass,
+        hp: classStats[randomClass].hp,
+        maxHp: classStats[randomClass].hp,
+        stats: classStats[randomClass],
+        healsLeft: 3
+    };
 
-            // Speler data laden
-            player = { 
-                name: chosenClass, 
-                hp: classStats[chosenClass].hp,
-                maxHp: classStats[chosenClass].hp,
-                stats: classStats[chosenClass],
-                healsLeft: 3
-            };
+    isBattleOver = false;
 
-            // Vijand data laden
-            enemy = {
-                name: randomClass,
-                hp: classStats[randomClass].hp,
-                maxHp: classStats[randomClass].hp,
-                stats: classStats[randomClass],
-                healsLeft: 3
-            };
+    document.getElementById('selection-screen').style.display = 'none';
+    document.getElementById('battle-screen').style.display = 'block';
+    document.getElementById('action-buttons').style.display = 'block';
+    document.getElementById('restart-btn').style.display = 'none';
+    document.getElementById('log').innerHTML = 'The battle begins! You face a ' + enemy.name + '.';
+    updateUI();
+}
 
-            isBattleOver = false;
+// Update de HP en teksten op het scherm
+function updateUI() {
+    document.getElementById('player-name').innerText = player.name;
+    document.getElementById('player-hp').innerText = player.hp;
+    document.getElementById('player-heals-count').innerText = player.healsLeft;
+    document.getElementById('enemy-name').innerText = enemy.name;
+    document.getElementById('enemy-hp').innerText = enemy.hp;
+    document.getElementById('enemy-heals-count').innerText = enemy.healsLeft;
+}
 
-            // Schermen wisselen
-            document.getElementById('selection-screen').style.display = 'none';
-            document.getElementById('battle-screen').style.display = 'block';
-            document.getElementById('action-buttons').style.display = 'block';
-            document.getElementById('restart-btn').style.display = 'none';
-            document.getElementById('log').innerHTML = 'The battle begins! You face a ' + enemy.name + '.';
+// Logica voor de actie van de speler
+function playerAction(action) {
+    if (isBattleOver) return;
+    var logDiv = document.getElementById('log');
+    logDiv.innerHTML = ''; // Log leegmaken voor nieuwe beurt
 
-            updateUI();
+    if (action === 'attack' || action === 'special') {
+        var baseDamage = action === 'attack' ? player.stats.attack : player.stats.special;
+        var damage = baseDamage;
+        var isCrit = Math.random() < 0.20; // 20% kans op een critical hit
+
+        if (isCrit) {
+            damage = baseDamage * 2; // Dubbele schade
         }
 
-        // Update de HP en teksten op het scherm
-        function updateUI() {
-            document.getElementById('player-name').innerText = player.name;
-            document.getElementById('player-hp').innerText = player.hp;
-            document.getElementById('player-heals-count').innerText = player.healsLeft;
+        enemy.hp -= damage;
 
-            document.getElementById('enemy-name').innerText = enemy.name;
-            document.getElementById('enemy-hp').innerText = enemy.hp;
-            document.getElementById('enemy-heals-count').innerText = enemy.healsLeft;
+        if (action === 'attack') {
+            logDiv.innerHTML += 'You attacked ' + enemy.name + ' for ' + damage + ' damage.';
+        } else {
+            logDiv.innerHTML += 'You used a special attack on ' + enemy.name + ' for ' + damage + ' damage.';
         }
 
-        // Logica voor de actie van de speler
-        function playerAction(action) {
-            if (isBattleOver) return;
+        if (isCrit) {
+            logDiv.innerHTML += ' <b style="color: red;">CRITICAL HIT!</b>';
+        }
+        logDiv.innerHTML += '<br>';
 
-            var logDiv = document.getElementById('log');
-            logDiv.innerHTML = ''; // Log leegmaken voor nieuwe beurt
+    } else if (action === 'heal') {
+        if (player.healsLeft > 0) {
+            player.hp += player.stats.heal;
+            if (player.hp > player.maxHp) player.hp = player.maxHp;
+            player.healsLeft--;
+            logDiv.innerHTML += 'You healed yourself for ' + player.stats.heal + ' HP.<br>';
+        } else {
+            logDiv.innerHTML += 'No heals left! Turn wasted.<br>';
+        }
+    }
 
-            if (action === 'attack') {
-                enemy.hp -= player.stats.attack;
-                logDiv.innerHTML += 'You attacked ' + enemy.name + ' for ' + player.stats.attack + ' damage.<br>';
-            } else if (action === 'special') {
-                enemy.hp -= player.stats.special;
-                logDiv.innerHTML += 'You used a special attack on ' + enemy.name + ' for ' + player.stats.special + ' damage.<br>';
-            } else if (action === 'heal') {
-                if (player.healsLeft > 0) {
-                    player.hp += player.stats.heal;
-                    if (player.hp > player.maxHp) player.hp = player.maxHp; // Niet over max HP healen
-                    player.healsLeft--;
-                    logDiv.innerHTML += 'You healed yourself for ' + player.stats.heal + ' HP.<br>';
-                } else {
-                    logDiv.innerHTML += 'No heals left! Turn wasted.<br>';
-                }
-            }
+    if (enemy.hp <= 0) {
+        enemy.hp = 0;
+        logDiv.innerHTML += '<b>Victory! You defeated the ' + enemy.name + '!</b><br>';
+        endGame();
+        return;
+    }
 
-            if (enemy.hp <= 0) {
-                enemy.hp = 0;
-                logDiv.innerHTML += '<b>Victory! You defeated the ' + enemy.name + '!</b><br>';
-                endGame();
-                return;
-            }
+    // Als de vijand nog leeft, slaat deze automatisch terug
+    enemyAction();
+}
 
-            // Als de vijand nog leeft, slaat deze automatisch terug
-            enemyAction();
+// AI voor de tegenstander
+function enemyAction() {
+    var logDiv = document.getElementById('log');
+    var actions = ['attack', 'special'];
+    if (enemy.healsLeft > 0 && enemy.hp < enemy.maxHp) {
+        actions.push('heal');
+    }
+
+    var randomAction = actions[Math.floor(Math.random() * actions.length)];
+
+    if (randomAction === 'attack' || randomAction === 'special') {
+        var baseDamage = randomAction === 'attack' ? enemy.stats.attack : enemy.stats.special;
+        var damage = baseDamage;
+        var isCrit = Math.random() < 0.20; // 20% kans op een critical hit
+
+        if (isCrit) {
+            damage = baseDamage * 2;
         }
 
-        // AI voor de tegenstander
-        function enemyAction() {
-            var logDiv = document.getElementById('log');
-            var actions = ['attack', 'special'];
-            
-            if (enemy.healsLeft > 0 && enemy.hp < enemy.maxHp) {
-                actions.push('heal');
-            }
+        player.hp -= damage;
 
-            var randomAction = actions[Math.floor(Math.random() * actions.length)];
-
-            if (randomAction === 'attack') {
-                player.hp -= enemy.stats.attack;
-                logDiv.innerHTML += enemy.name + ' attacked you for ' + enemy.stats.attack + ' damage.<br>';
-            } else if (randomAction === 'special') {
-                player.hp -= enemy.stats.special;
-                logDiv.innerHTML += enemy.name + ' used special attack for ' + enemy.stats.special + ' damage.<br>';
-            } else if (randomAction === 'heal') {
-                enemy.hp += enemy.stats.heal;
-                if (enemy.hp > enemy.maxHp) enemy.hp = enemy.maxHp;
-                enemy.healsLeft--;
-                logDiv.innerHTML += enemy.name + ' healed themselves for ' + enemy.stats.heal + ' HP.<br>';
-            }
-
-            if (player.hp <= 0) {
-                player.hp = 0;
-                logDiv.innerHTML += '<b>Defeat! You were defeated by ' + enemy.name + '.</b><br>';
-                endGame();
-            }
-
-            updateUI();
+        if (randomAction === 'attack') {
+            logDiv.innerHTML += enemy.name + ' attacked you for ' + damage + ' damage.';
+        } else {
+            logDiv.innerHTML += enemy.name + ' used special attack for ' + damage + ' damage.';
         }
 
-        // Beëindig het spel
-        function endGame() {
-            isBattleOver = true;
-            updateUI();
-            document.getElementById('action-buttons').style.display = 'none';
-            document.getElementById('restart-btn').style.display = 'inline-block';
+        if (isCrit) {
+            logDiv.innerHTML += ' <b style="color: red;">CRITICAL HIT!</b>';
         }
+        logDiv.innerHTML += '<br>';
 
-        // Reset naar het personage-selectiescherm
-        function resetGame() {
-            document.getElementById('selection-screen').style.display = 'block';
-            document.getElementById('battle-screen').style.display = 'none';
-        }
-    </script>
+    } else if (randomAction === 'heal') {
+        enemy.hp += enemy.stats.heal;
+        if (enemy.hp > enemy.maxHp) enemy.hp = enemy.maxHp;
+        enemy.healsLeft--;
+        logDiv.innerHTML += enemy.name + ' healed themselves for ' + enemy.stats.heal + ' HP.<br>';
+    }
+
+    if (player.hp <= 0) {
+        player.hp = 0;
+        logDiv.innerHTML += '<b>Defeat! You were defeated by ' + enemy.name + '.</b><br>';
+        endGame();
+    }
+    updateUI();
+}
+
+// Beëindig het spel
+function endGame() {
+    isBattleOver = true;
+    updateUI();
+    document.getElementById('action-buttons').style.display = 'none';
+    document.getElementById('restart-btn').style.display = 'inline-block';
+}
+
+// Reset naar het personage-selectiescherm
+function resetGame() {
+    document.getElementById('selection-screen').style.display = 'block';
+    document.getElementById('battle-screen').style.display = 'none';
+}
+</script>
 </body>
 </html>
-
